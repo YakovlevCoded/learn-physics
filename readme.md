@@ -1,4 +1,6 @@
-# Three.js Journey
+# https://leonid-yakovlev-physics.netlify.app/
+
+## Click to createSphere or createBox buttons
 
 ## Setup
 Download [Node.js](https://nodejs.org/en/download/).
