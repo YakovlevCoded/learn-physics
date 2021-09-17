@@ -1,4 +1,6 @@
 # Local Netlify folder
-.netlify
+# .netlify
 node_modules
 dist
+# Local Netlify folder
+.netlify
