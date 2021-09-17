@@ -3,10 +3,28 @@ import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import * as dat from "dat.gui";
 import CANNON from "cannon";
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader'
+
+const gltfLoader = new GLTFLoader()
+let car = null
+
+gltfLoader.load(
+    '/models/Crysler_new_yorker.glb',
+    (gltf) => {
+        const group = new THREE.Group();
+        group.add(...gltf.scene.children)
+        car = createCar(group, 1, 1, 1, { x: -20, y: 0.5, z: 0 })
+    },
+    () => {
+        console.log('progress')
+    },
+    () => {
+        console.log('error')
+    },
+)
 
 const hitSound = new Audio("/sounds/hit.mp3");
 const playHitSound = (collision) => {
-  console.log(collision);
   const impactStrength = collision.contact.getImpactVelocityAlongNormal();
   if (impactStrength > 1.4) {
     hitSound.volume = Math.random()
@@ -30,13 +48,17 @@ debugObject.createSphere = () => {
 };
 
 debugObject.createBox = () => {
-  const size = Math.random();
+  const size = Math.random() * 2;
   createBox(size, size, size, {
     x: (Math.random() - 0.5) * 3,
     y: 3,
     z: (Math.random() - 0.5) * 3,
   });
 };
+
+debugObject.pushCar = () => {
+  car.applyLocalForce(new CANNON.Vec3(1500, 5, 0), new CANNON.Vec3(0, 0, 0))
+}
 
 debugObject.reset = () => {
   for (const object of objectsToUpdate) {
@@ -49,6 +71,7 @@ debugObject.reset = () => {
 
 gui.add(debugObject, "createSphere");
 gui.add(debugObject, "createBox");
+gui.add(debugObject, "pushCar");
 gui.add(debugObject, "reset");
 /**
  * Base
@@ -77,7 +100,7 @@ const environmentMapTexture = cubeTextureLoader.load([
 // создание мира физического
 const world = new CANNON.World();
 world.broadphase = new CANNON.SAPBroadphase(world);
-world.allowSleep = true;
+// world.allowSleep = true;
 world.gravity.set(0, -9.87, 0);
 
 // создание материалов из чего сделаны обьекты
@@ -88,9 +111,10 @@ const defaultContactMaterial = new CANNON.ContactMaterial(
   defaultMaterial,
   {
     friction: 0.1,
-    restitution: 0.7,
+    restitution: 0.3,
   }
 );
+
 world.addContactMaterial(defaultContactMaterial);
 world.defaultContactMaterial = defaultContactMaterial;
 
@@ -116,12 +140,12 @@ world.addBody(floorBody);
  * Floor
  */
 const floor = new THREE.Mesh(
-  new THREE.PlaneGeometry(20, 20),
-  new THREE.MeshStandardMaterial({
+  new THREE.PlaneGeometry(50, 50),
+  new THREE.MeshBasicMaterial({
     color: "#777777",
-    metalness: 0.1,
-    roughness: 0.2,
-    envMap: environmentMapTexture,
+    // metalness: 0.1,
+    // roughness: 0.2,
+    // envMap: environmentMapTexture,
   })
 );
 floor.receiveShadow = true;
@@ -264,6 +288,36 @@ const createBox = (width, height, depth, position) => {
     body,
   });
 };
+const createCar = (mesh, width, height, depth, position) => {
+  mesh.scale.set(width, height, depth);
+  mesh.castShadow = true;
+  mesh.position.copy(position);
+  scene.add(mesh);
+
+  // Cannon.js body
+  const shape = new CANNON.Box(
+    new CANNON.Vec3(width, height, depth)
+  );
+
+  const body = new CANNON.Body({
+    mass: 1,
+    position: new CANNON.Vec3(0, 0, 0),
+    shape,
+    // material: defaultMaterial,
+  });
+
+  body.position.copy(position);
+  body.addEventListener("collide", playHitSound);
+  world.addBody(body);
+
+  // save to update
+  objectsToUpdate.push({
+    mesh,
+    body,
+  });
+  return body
+};
+
 // createSphere(0.5, { x: 0, y: 3, z: 0 });
 // createBox(1, 1, 1, { x: 0, y: 1.5, z: 0 });
 
